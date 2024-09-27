@@ -7,7 +7,7 @@ Collaborators: Tigris Mendez, Dan Tatulescu
 [Construction Permits Dataset](https://data.austintexas.gov/Building-and-Development/Issued-Construction-Permits/3syk-w9eu/about_data)<br>
 [Real-Time Traffic Incident Report Dataset](https://data.austintexas.gov/Transportation-and-Mobility/Real-Time-Traffic-Incident-Reports/dx9v-zd7x/about_data)
 
-#TODOs
+### TODOs
 <li>formulate research question</li>
 <li>identify the variables that will be retained</li>
 <li>combined DSs into one</li>
