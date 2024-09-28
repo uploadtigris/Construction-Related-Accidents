@@ -10,6 +10,7 @@ Collaborators: Tigris Mendez, Dan Tatulescu
 ### TODOs
 <li>formulate research question</li>
 <li>identify the variables that will be retained</li>
+<li>query data + download datasets</li>
 <li>combined DSs into one</li>
 
 
