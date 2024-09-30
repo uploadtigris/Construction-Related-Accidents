@@ -10,6 +10,22 @@ ID variable is going to be Zipcodes
 <li>Permit Type Desc</li>
 <li>Issued Date - 2010-2024 (categorize by month; sum total permits per month)</li>
 <li>Status Current - filter for rows that are active, or completed (find all unique categorical variables)</li>
-
+<li>Number of Floors - Check how many rows are missing!</li>
 
 ## Traffic Incidents
+<li>Publish Date</li>
+<li>Issue Reported</li>
+
+## Outcome Variable --> Number of traffic indcidents per zipcode
+## Numerical Variables:
+<li>Number of Traffic Incidents (variable will be created)</li>
+<li>Number of Building Permits (variable will be created)</li>
+<li>Number of Floors</li>
+
+## Categorical Variable:
+<li>Permit Class</li>
+<li>Permit Type Desc</li>
+<li>Issued Date</li>
+<li>Status Current</li>
+<li>Publish Date</li>
+<li>Issue Reported</li>
