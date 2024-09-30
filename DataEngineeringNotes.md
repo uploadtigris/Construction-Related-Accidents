@@ -16,7 +16,9 @@ ID variable is going to be Zipcodes
 <li>Publish Date</li>
 <li>Issue Reported</li>
 
-## Outcome Variable --> Number of traffic indcidents per zipcode
+## Outcome Variable
+<li>Number of traffic indcidents per zipcode</li>
+
 ## Numerical Variables:
 <li>Number of Traffic Incidents (variable will be created)</li>
 <li>Number of Building Permits (variable will be created)</li>
