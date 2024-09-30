@@ -17,7 +17,7 @@ ID variable is going to be **Zipcodes**
 <li>Issue Reported</li>
 
 ## Outcome Variable
-<li>Number of traffic indcidents per zipcode</li>
+<li>Number of traffic incidents per zipcode</li>
 
 ## Numerical Variables:
 <li>Number of Traffic Incidents (variable will be created)</li>
