@@ -8,7 +8,7 @@ ID variable is going to be **Zipcodes**
 ## Issued Contruction Permits
 <li>Permit Class</li>
 <li>Permit Type Desc</li>
-<li>Issued Date - 2010-2024 (categorize by month; sum total permits per month)</li>
+<li>Issued Date - Jan 01 2010- Jan 01 2024 (categorize by month; sum total permits per month)</li>
 <li>Status Current - filter for rows that are active, or completed (find all unique categorical variables)</li>
 <li>Number of Floors - Check how many rows are missing!</li>
 
