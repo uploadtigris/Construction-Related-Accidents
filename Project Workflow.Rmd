@@ -1,0 +1,100 @@
+---
+title: "Project Workflow - SDS 322E"
+output: html_document
+date: "2024-10-07"
+
+Collaborator Names: Tigris Mendez, Dan Tatulescu
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Install & Call Libraries
+
+```{r}
+#install.packages("ggmap")
+#install.packages
+#install.packages("tidygeocoder")
+library("ggmap")
+library("tidyverse")
+library("zipcodeR")
+library("tidygeocoder")
+```
+
+## Inputting Data
+
+```{r}
+construction_permits <- read.csv("~/UT Course Files/UT Fall 2024/SDS 322E/SDS Project Files/Original Data/Issued_Construction_Permits_20241006.csv", header=TRUE)
+
+head(construction_permits)
+as.data.frame(colnames(construction_permits))
+```
+
+```{r}
+traffic_indcidents <- read.csv("~/UT Course Files/UT Fall 2024/SDS 322E/SDS Project Files/Original Data/Real-Time_Traffic_Incident_Reports_20241006.csv")
+
+head(traffic_indcidents)
+as.data.frame(colnames(traffic_indcidents))
+```
+
+## Cleaning Data
+
+### Removing unneeded columns
+
+```{r}
+# Selecting only the useful columns for Traffic Indcidents Dataset
+ti_df = traffic_indcidents[,c('Published.Date',
+                              'Issue.Reported',
+                              'Latitude',
+                              'Longitude')]
+
+head(ti_df)
+```
+
+```{r}
+# Selecting only the useful columns for Construction permits
+cp_df = construction_permits[,c('Permit.Class',
+                                'Permit.Type.Desc',
+                                'Issued.Date',
+                                'Status.Current',
+                                'Number.Of.Floors',
+                                'Original.Zip')]
+
+head(cp_df)
+```
+
+### Convert Lat/Lon to Zip codes for Traffic Incidents
+
+drop NA values for Traffic Incidents where Lat or Lon are NA.
+
+```{r}
+ti_df_naLatLon <- drop_na(ti_df, any_of(c('Latitude', 'Longitude')))
+```
+
+```{r}
+
+#ti_df_naLatLon |>
+#  mutate(zipcode = reverse_geocode(ti_df_naLatLon, Latitude, #Longitude, address=address))
+
+#ti_df_latlon <- as_tibble(ti_df_naLatLon[,c('Latitude', 'Longitude')])
+#ti_df_latlon <- ti_df_naLatLon$Latitude, ti_df_naLatLon$Longitude)
+
+ti_df_LatLon <- mutate(zipcode = reverse_geocode(lat = ti_df_naLatLon$Latitude, lon = ti_df_naLatLon$Longitude, method = 'osm', address = address_found, full_results = FALSE)$zipcode)
+
+
+ti_df_LatLon
+```
+
+```{r}
+tibble(
+    latitude = c(38.895865, 43.6534817),
+    longitude = c(-77.0307713,-79.3839347)
+  ) %>%
+  reverse_geocode(
+    lat = latitude,
+    long = longitude,
+    method = 'osm',
+    full_results = TRUE
+  )
+```
