@@ -10,12 +10,36 @@ Collaborator Names: Tigris Mendez, Dan Tatulescu
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Description - Project Check-in 2
+
+### Dataset 1
+
+Name - [Issued Construction Permits](https://data.austintexas.gov/Building-and-Development/Issued-Construction-Permits/3syk-w9eu/about_data)
+
+Description - This data set contains "Building, Electrical, Mechanical, and Plumbing Permits and Driveway/Sidewalk Permits issued by the City of Austin. Includes relevant details such as issue date, location, council district, expiration date, description of work, square footage, valuation, and units." (City of Austin open data portal)
+
+Rows & Columns - There are 897369 rows and 68 columns.
+
+Unique Rows - A single row represents a construction permit.
+
+### Dataset 2
+
+Name - [Real-Time Incidents](https://data.austintexas.gov/Transportation-and-Mobility/Real-Time-Traffic-Incident-Reports/dx9v-zd7x/about_data)
+
+Description - "This data set contains various traffic incidents from the Austin-Travis County traffic reports collected from the various Public Safety agencies through a data feed from the Combined Transportation, Emergency, and Communications Center (CTECC)." (City of Austin open data portal)
+
+Rows & Columns - There are 356150 rows and 22 columns.
+
+Unique Rows - A single row represents a traffic incident.
+
 ## Install & Call Libraries
 
 ```{r}
 #install.packages("ggmap")
 #install.packages
 #install.packages("tidygeocoder")
+#install.packages("ggplot2")
+library("ggplot2")
 library("ggmap")
 library("tidyverse")
 library("zipcodeR")
@@ -32,10 +56,22 @@ as.data.frame(colnames(construction_permits))
 ```
 
 ```{r}
+dim(construction_permits)
+```
+
+**Note - ArcGIS Reverse Geocoding Process**
+
+In the Traffic Incidents data set there was not a column for Zip codes. Because there was available data for latitude and longitude, we decided to reverse-geocode the lat/lon values in a column of zip codes. We initially were attempting to utilize Maps API services to perform this task but it was cost prohibitive. We opted to use a Geographic Information System software named ArcGIS to produce the Zipcode data leveraging a TIGER/Line Shapefile provided by the US Census Bureau to reverse geocode the lat/lon figures through ArcGIS's geoferencing capabilities.
+
+```{r}
 traffic_indcidents <- read.csv("~/UT Course Files/UT Fall 2024/SDS 322E/SDS Project Files/Original Data/joined_traffic_zipcode_csv.csv")
 
 head(traffic_indcidents)
 as.data.frame(colnames(traffic_indcidents))
+```
+
+```{r}
+dim(traffic_indcidents)
 ```
 
 ## Cleaning Data
@@ -48,10 +84,9 @@ ti_df = traffic_indcidents[,c('Published_Date',
                               'Issue_Reported',
                               'ZCTA5CE20')]
 
+# renaming the zipcode column
 ti_df <- ti_df |>
   rename(zipcode = ZCTA5CE20)
-
-head(ti_df)
 ```
 
 ```{r}
@@ -62,14 +97,153 @@ cp_df = construction_permits[,c('Permit.Class',
                                 'Status.Current',
                                 'Number.Of.Floors',
                                 'Original.Zip')]
-
-head(cp_df)
 ```
 
 ### NA Values
 
-```{r}
-missing_rows_count <- sum(!complete.cases(ti_df))
+Count NA Values
 
-print(missing_rows_count)
+```{r}
+missing_rows_count_ti <- sum(!complete.cases(ti_df))
+missing_rows_count_cp <- sum(!complete.cases(cp_df))
+
+
+sprintf("There are % s rows with missing values in the traffic incidents dataset.", missing_rows_count_ti)
+sprintf("There are % s rows with missing values in the construction permits dataset.", missing_rows_count_cp)
 ```
+
+Drop NA Values
+
+```{r}
+# dropping NA values from the Traffic Incidents data set & saving the data frame
+ti_df_noNA <- na.omit(ti_df)
+```
+
+```{r}
+# assign rows with description type of "Driveway / Sidewalks" to 0
+cp_df$Number.Of.Floors <- ifelse(is.na(cp_df$Number.Of.Floors) & cp_df$Permit.Type.Desc == "Driveway / Sidewalks", 0, cp_df$Number.Of.Floors)
+
+# dropping NA values from the Construction Permits data set & saving the data frame
+cp_df_noNA <- na.omit(cp_df)
+```
+
+Rows and Columns of resulting data set after cleaning
+
+```{r}
+# Rows and Columns of the cleaned Traffic Incident data set
+dim(ti_df_noNA)
+
+# Rows and Columns of the cleaned Construction Permit data set
+dim(cp_df_noNA)
+```
+
+**In the cleaned Traffic Incident data set there are 355,333 rows and 3 columns.** **In the cleaned Construction Permits data set there are 737,785 rows and 6 columns.**
+
+**The cleaned data sets have the following variables -**
+
+**Traffic Incidents:**
+
+-   **Published_Date** -\> The date the report was published
+-   **Issue_Reported** -\> The reported issue, based on the selection by reporting agency
+-   **Zip code** -\> Processed from lat/lon using ArcGIS reverse-geocoding
+
+**Construction Permits:**
+
+-   **Permit.Type.Desc** -\> Description of the Permit Type
+-   **Permit.Class** -\> "Sub Type of the permit", it will be re-categorized as Residential or Commercial permits.
+-   **Issued.Date** -\> Date on which the permit was issued
+-   **Status.Current** -\> Current status of permit
+-   **Number.Of.Floors** -\> How many floors property has
+-   **Original.Zip** -\> Zip code of the property associated with the permit
+
+## Investigation of the Traffic Incidents per Zipcode as a numeric variable
+
+**Because we do not have any numeric variables in our data sets, we decided to calculate and display the number of traffic incidents for each Zip code.**
+
+```{r}
+zip_code_counts <- ti_df_noNA |>
+  count(zipcode)
+
+ggplot(zip_code_counts, aes(x = zipcode, y = n)) +
+  geom_bar(stat = "identity", fill = "skyblue", position = position_nudge(x=0.5)) +
+  labs(title = "Number of Traffic Incidents per zipcode",
+       x = "Zipcode",
+       y = "Number of Traffic Incidents reported") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+head(ti_df_noNA)
+
+summary(zip_code_counts$n)
+
+n_distinct(unique(ti_df_noNA$zipcode))
+```
+**We noticed that a lot of zip codes have very few incidents and a large majority of incidents are located closer to the Austin city center. So we want to make a bar chart that shows only the zip codes that have a substantial amount of traffic incidents for the sake of brevity.**
+
+```{r}
+zip_code_counts_sorted <- zip_code_counts %>%
+  arrange(desc(n))
+
+print(zip_code_counts_sorted)
+
+# Count the occurrences of each unique zipcode and filter for those with counts greater than 10
+zip_code_counts_greaterthan1 <- ti_df_noNA %>%
+  count(zipcode) %>%
+  filter(n > 10)  # Keep only zip codes with more than 10 incidents
+
+# Convert 'zipcode' to a factor with levels only for the zip codes that have values
+zip_code_counts_greaterthan1$zipcode <- factor(zip_code_counts_greaterthan1$zipcode, levels = unique(zip_code_counts_greaterthan1$zipcode))
+
+# Plotting the filtered data with zip codes that have more than 10 incidents
+ggplot(zip_code_counts_greaterthan1, aes(x = zipcode, y = n)) +
+  geom_bar(stat = "identity", fill = "skyblue", position = position_nudge(x = 0.5)) +
+  labs(title = "Number of Traffic Incidents per Zipcode (Counts > 10)",
+       x = "Zipcode",
+       y = "Number of Traffic Incidents Reported") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 6),
+        axis.ticks.x = element_blank(), 
+        axis.ticks.y = element_blank())
+```
+
+
+## Investigation of the Issued.Date categorical variable
+
+Plotting
+
+```{r}
+# produce a chart that illustrates the number of Issued Construction permits across the dates
+
+# Converting 'Issued.Date' to Date to ensure correct format
+cp_df_noNA$Issued.Date <- as.Date(cp_df_noNA$Issued.Date)
+
+# Extracting the year from 'Issued.Date'
+cp_df_noNA$Year <- format(cp_df_noNA$Issued.Date, "%Y")
+
+# Counting the occurrences of each year
+year_counts <- cp_df_noNA |>
+  count(Year)
+
+# Plotting the histogram for the number of Construction Permits issued by year
+ggplot(year_counts, aes(x = Year, y = n)) +
+  geom_bar(stat = "identity", fill = "skyblue", position = position_nudge(x=0.5)) +
+  labs(title = "Number of Issued Construction Permits per Year",
+       x = "Year",
+       y = "Number of Permits Issued") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+head(cp_df_noNA)
+
+```
+Summary Statistics of Number of Issued Construction Permits per Year
+
+```{r}
+summary(year_counts$n)
+
+sprintf('There are %d permits issued in the year of 2024', sum(cp_df_noNA$Year == 2024))
+```
+**There are 7 permits issued in the year of 2024**
+**The Mean value of permits issues across the years is 49,186 permits.**
+**The highest amount of permits issued in one year is 62,400 permits.**
+
+## Our Research Question
+
+**Questions for Professor Guyot and TAs:**
