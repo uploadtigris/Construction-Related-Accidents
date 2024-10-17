@@ -249,4 +249,4 @@ sprintf('There are %d permits issued in the year of 2024', sum(cp_df_noNA$Year =
 **We would like to know if there is a spatial relationship between traffic incidents and construction permits.**
 
 **Questions for Professor Guyot and TAs:**
-- Is using the zipcode occurences in the Traffic Incidents okay as a numeric variable if we do not have any other numeric variables?
+- Is using the zip code occurences in the Traffic Incidents okay as a numeric variable if we do not have any other numeric variables?
