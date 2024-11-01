@@ -1,0 +1,201 @@
+---
+title: "SDS 322E Project - EDA Report"
+output: html_document
+date: "10-21-2024"
+
+Team Member 1: Dan Tatelescu
+Team Member 2: Tigris Mendez
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Description - EDA Report 2
+
+# Title and Introduction
+
+We would like to know how construction affects traffic incident rates. We use construction permits as a proxy for the actual number of construction sites in a zip code. Our motivation is to show high risk construction projects, which may deserve a greater degree of road safety preparation. [This study](https://www.sciencedirect.com/science/article/pii/S235214652100819X), by Mangones, et al. (2021), has shown that construction projects can increase traffic incidents when there is use of excavation of more than half a meter. We wish to localize this experiment to Austin and understand how the different types of construction projects affect traffic incident rates.
+
+Name - [Issued Construction Permits](https://data.austintexas.gov/Building-and-Development/Issued-Construction-Permits/3syk-w9eu/about_data)
+
+Description - This data set contains "Building, Electrical, Mechanical, and Plumbing Permits and Driveway/Sidewalk Permits issued by the City of Austin. Includes relevant details such as issue date, location, council district, expiration date, description of work, square footage, valuation, and units." (City of Austin open data portal)
+
+Rows & Columns - There are 897369 rows and 68 columns.
+
+Unique Rows - A single row represents a construction permit.
+
+**Main Variables of Interest - Construction Permits**
+
+-   **Permit.Type.Desc** -\> Description of the Permit Type
+-   **Permit.Class** -\> "Sub Type of the permit", it will be re-categorized as Residential or Commercial permits.
+-   **Issued.Date** -\> Date on which the permit was issued
+-   **Status.Current** -\> Current status of permit
+-   **Number.Of.Floors** -\> How many floors property has
+-   **Original.Zip** -\> Zip code of the property associated with the permit
+
+### Dataset 2
+
+Name - [Real-Time Incidents](https://data.austintexas.gov/Transportation-and-Mobility/Real-Time-Traffic-Incident-Reports/dx9v-zd7x/about_data)
+
+Description - "This data set contains various traffic incidents from the Austin-Travis County traffic reports collected from the various Public Safety agencies through a data feed from the Combined Transportation, Emergency, and Communications Center (CTECC)." (City of Austin open data portal)
+
+Rows & Columns - There are 356150 rows and 22 columns.
+
+Unique Rows - A single row represents a traffic incident.
+
+**Main Variables of Interest - Traffic Incidents:**
+
+-   **Published_Date** -\> The date the report was published
+-   **Issue_Reported** -\> The reported issue, based on the selection by reporting agency
+-   **Zip code** -\> Processed from lat/lon using ArcGIS reverse-geocoding
+
+## Expecations
+
+**Trends and Relationships**
+
+We expect that Commercial Projects cause an increase in Traffic Incident rates. We expect that there will be more traffic incidents during the months of mid spring when there is more rain. We also expect that there will be a difference in Traffic Incidents rates based upon the proximity of zip codes to the Austin city center. 
+
+**Research Question - Dan**
+
+Is there a difference in impact of Residential or Commercial construction projects on Traffic Incidents? We will eventually determine this causal relationship through the rejection of the null hypothesis which states that the impact of Commercial Permits and Residential Permits on Traffic Incidents are equivalent.
+
+**Research Question - Tigris**
+
+How do spatial concentrations of Traffic Incidents change throughout the year?
+
+## Install & Call Libraries
+
+```{r}
+#install.packages("ggmap")
+#install.packages
+#install.packages("tidygeocoder")
+#install.packages("ggplot2")
+library("ggplot2")
+library("ggmap")
+library("tidyverse")
+library("zipcodeR")
+library("tidygeocoder")
+```
+
+# Methods
+
+## Inputting Data
+
+```{r}
+# This code reads the Construction Permit data set into a R dataframe
+construction_permits <- read.csv("~/My Documents/UT Course Files/UT Fall 2024/SDS 322E/SDS Project Files/Original Data/Issued_Construction_Permits_20241006.csv", header=TRUE)
+
+head(construction_permits)
+as.data.frame(colnames(construction_permits))
+```
+
+```{r}
+dim(construction_permits)
+```
+**Note - ArcGIS Reverse Geocoding Process**
+
+In the Traffic Incidents data set there was not a column for Zip codes. Because there was available data for latitude and longitude, we decided to reverse-geocode the lat/lon values in a column of zip codes. We initially were attempting to utilize Maps API services to perform this task but it was cost prohibitive. We opted to use a Geographic Information System software named ArcGIS to produce the Zipcode data leveraging a TIGER/Line Shapefile provided by the US Census Bureau to reverse geocode the lat/lon figures through ArcGIS's geoferencing capabilities.
+
+```{r}
+# This code reads the Traffic Incidents data set into a R dataframe
+traffic_indcidents <- read.csv("~/My Documents/UT Course Files/UT Fall 2024/SDS 322E/SDS Project Files/Original Data/joined_traffic_zipcode_csv.csv")
+
+head(traffic_indcidents)
+as.data.frame(colnames(traffic_indcidents))
+```
+
+```{r}
+dim(traffic_indcidents)
+```
+## Cleaning Data
+
+### Removing unneeded columns
+
+```{r}
+# Selecting only the useful columns for Traffic Indcidents Dataset
+ti_df = traffic_indcidents[,c('Published_Date',
+                              'Issue_Reported',
+                              'ZCTA5CE20')]
+
+# renaming the zipcode column
+ti_df <- ti_df |>
+  rename(zipcode = ZCTA5CE20)
+```
+
+```{r}
+# Selecting only the useful columns for Construction permits
+cp_df = construction_permits[,c('Permit.Class',
+                                'Permit.Type.Desc',
+                                'Issued.Date',
+                                'Status.Current',
+                                'Number.Of.Floors',
+                                'Original.Zip')]
+```
+
+```{r}
+# if starting character equals R, we isolate it to represent Residential
+# if starting character equals C, we isolate it to represent Commercial
+cp_df$Permit.Class.Simple <- ifelse(cp_df$Permit.Class == "", "",
+                                    substr(cp_df$Permit.Class, 1, 1))
+
+cp_df$Permit.Class.Simple <- ifelse(cp_df$Permit.Class.Simple == "S", "",
+                                    cp_df$Permit.Class.Simple)
+
+unique(cp_df$Permit.Class.Simple)
+
+```
+
+### NA Values
+
+Count NA Values
+
+```{r}
+# counts the number of rows with missing values
+missing_rows_count_ti <- sum(!complete.cases(ti_df))
+missing_rows_count_cp <- sum(!complete.cases(cp_df))
+
+
+sprintf("There are % s rows with missing values in the traffic incidents dataset.", missing_rows_count_ti)
+sprintf("There are % s rows with missing values in the construction permits dataset.", missing_rows_count_cp)
+```
+
+Drop NA Values
+
+```{r}
+# dropping NA values from the Traffic Incidents data set & saving the data frame
+ti_df_noNA <- na.omit(ti_df)
+```
+
+```{r}
+# assign rows with description type of "Driveway / Sidewalks" to 0
+cp_df$Number.Of.Floors <- ifelse(is.na(cp_df$Number.Of.Floors) & cp_df$Permit.Type.Desc == "Driveway / Sidewalks", 0, cp_df$Number.Of.Floors)
+
+# dropping NA values from the Construction Permits data set & saving the data frame
+cp_df_noNA <- na.omit(cp_df)
+```
+
+Rows and Columns of resulting data set after cleaning
+
+```{r}
+# Rows and Columns of the cleaned Traffic Incident data set
+dim(ti_df_noNA)
+# Rows and Columns of the cleaned Construction Permit data set
+dim(cp_df_noNA)
+```
+**In the Traffic Incident data set we started with 356,150 rows and 22 columns.**
+**In the Construction Permits data set we started with 897,369 rows and 68 columns.**
+**In the Traffic Incident data set we ended with 355,333 and 3 columns.**
+**In the Construction Permits data set we ended with 737,785 and 6 columns.**
+
+We selected certain rows based on their relevance to our area of investigation, which reduced the number of columns. We utilized ArcGIS Pro to create a zipcode column for traffic incidents based on the existing latitude and longitude columns for each row.
+
+We also dropped any rows that contained missing values across the columns of interest. And prior to that, we converted the number of floors for rows with the 'Driveway/Sidewalk' permit type description and missing floor values to be 0 as we can safely assume that sidewalks and driveways are on at ground level.
+
+The resulting data tidy in each data set as each column represents a characteristic, each row represents an individual permit or incident, and each cell represents an individual value.
+
+# Results
+
+# Discussion
+
+# Reflection, acknowledgements, and references
