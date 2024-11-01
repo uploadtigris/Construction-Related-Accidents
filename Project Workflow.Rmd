@@ -49,7 +49,7 @@ library("tidygeocoder")
 ## Inputting Data
 
 ```{r}
-construction_permits <- read.csv("~/UT Course Files/UT Fall 2024/SDS 322E/SDS Project Files/Original Data/Issued_Construction_Permits_20241006.csv", header=TRUE)
+construction_permits <- read.csv("~/My Documents/UT Course Files/UT Fall 2024/SDS 322E/SDS Project Files/Original Data/Issued_Construction_Permits_20241006.csv", header=TRUE)
 
 head(construction_permits)
 as.data.frame(colnames(construction_permits))
@@ -64,7 +64,7 @@ dim(construction_permits)
 In the Traffic Incidents data set there was not a column for Zip codes. Because there was available data for latitude and longitude, we decided to reverse-geocode the lat/lon values in a column of zip codes. We initially were attempting to utilize Maps API services to perform this task but it was cost prohibitive. We opted to use a Geographic Information System software named ArcGIS to produce the Zipcode data leveraging a TIGER/Line Shapefile provided by the US Census Bureau to reverse geocode the lat/lon figures through ArcGIS's geoferencing capabilities.
 
 ```{r}
-traffic_indcidents <- read.csv("~/UT Course Files/UT Fall 2024/SDS 322E/SDS Project Files/Original Data/joined_traffic_zipcode_csv.csv")
+traffic_indcidents <- read.csv("~/My Documents/UT Course Files/UT Fall 2024/SDS 322E/SDS Project Files/Original Data/joined_traffic_zipcode_csv.csv")
 
 head(traffic_indcidents)
 as.data.frame(colnames(traffic_indcidents))
@@ -158,53 +158,29 @@ dim(cp_df_noNA)
 
 ## Investigation of the Traffic Incidents per Zipcode as a numeric variable
 
-**Because we do not have any numeric variables in our data sets, we decided to calculate and display the number of traffic incidents for each Zip code.**
+**Because we do not have any numeric variables in our data sets, we decided to calculate and display the number of zipcodes with dfferents ranges of traffic incidents.**
 
 ```{r}
 zip_code_counts <- ti_df_noNA |>
   count(zipcode)
 
-ggplot(zip_code_counts, aes(x = zipcode, y = n)) +
-  geom_bar(stat = "identity", fill = "skyblue", position = position_nudge(x=0.5)) +
-  labs(title = "Number of Traffic Incidents per zipcode",
-       x = "Zipcode",
-       y = "Number of Traffic Incidents reported") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-head(ti_df_noNA)
 
 summary(zip_code_counts$n)
 
+# number of distinct zipcodes
 n_distinct(unique(ti_df_noNA$zipcode))
 ```
-**We noticed that a lot of zip codes have very few incidents and a large majority of incidents are located closer to the Austin city center. So we want to make a bar chart that shows only the zip codes that have a substantial amount of traffic incidents for the sake of brevity.**
+**The mean amount of traffic incidents for zip codes is 4,281, while the median is 1,917. The minimum amount of traffic incidents is 1 while the maximum is 20,116. This indicates that the data is highly skewed.**
 
 ```{r}
-zip_code_counts_sorted <- zip_code_counts %>%
-  arrange(desc(n))
-
-print(zip_code_counts_sorted)
-
-# Count the occurrences of each unique zipcode and filter for those with counts greater than 10
-zip_code_counts_greaterthan1 <- ti_df_noNA %>%
-  count(zipcode) %>%
-  filter(n > 10)  # Keep only zip codes with more than 10 incidents
-
-# Convert 'zipcode' to a factor with levels only for the zip codes that have values
-zip_code_counts_greaterthan1$zipcode <- factor(zip_code_counts_greaterthan1$zipcode, levels = unique(zip_code_counts_greaterthan1$zipcode))
-
-# Plotting the filtered data with zip codes that have more than 10 incidents
-ggplot(zip_code_counts_greaterthan1, aes(x = zipcode, y = n)) +
-  geom_bar(stat = "identity", fill = "skyblue", position = position_nudge(x = 0.5)) +
-  labs(title = "Number of Traffic Incidents per Zipcode (Counts > 10)",
-       x = "Zipcode",
-       y = "Number of Traffic Incidents Reported") +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 6),
-        axis.ticks.x = element_blank(), 
-        axis.ticks.y = element_blank())
+ggplot(zip_code_counts, aes(x = n)) +
+  geom_histogram(fill = "skyblue", binwidth = 450, center = 225) +
+  labs(title = "Number of Zipcodes by Number of Traffic Incidents",
+       y = "Number of Zipcodes", 
+       x = 'Traffic Incidents Reported')
 ```
-
-
+ **A large amount of Zip codes have between 0 and 450 traffic incidents. This data of zipcodes with different amounts of traffic incidents is positively skewed.**
+ 
 ## Investigation of the Issued.Date categorical variable
 
 Plotting
@@ -214,6 +190,8 @@ Plotting
 
 # Converting 'Issued.Date' to Date to ensure correct format
 cp_df_noNA$Issued.Date <- as.Date(cp_df_noNA$Issued.Date)
+
+cp_df_noNA$Issued.Date
 
 # Extracting the year from 'Issued.Date'
 cp_df_noNA$Year <- format(cp_df_noNA$Issued.Date, "%Y")
@@ -248,5 +226,4 @@ sprintf('There are %d permits issued in the year of 2024', sum(cp_df_noNA$Year =
 
 **We would like to know if there is a spatial relationship between traffic incidents and construction permits.**
 
-**Questions for Professor Guyot and TAs:**
-- Is using the zip code occurences in the Traffic Incidents okay as a numeric variable if we do not have any other numeric variables?
+
