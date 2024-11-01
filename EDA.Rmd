@@ -71,6 +71,9 @@ How do spatial concentrations of Traffic Incidents change throughout the year?
 #install.packages
 #install.packages("tidygeocoder")
 #install.packages("ggplot2")
+#install.packages("sf")
+#install.packages("tigris")
+library(dplyr)
 library("ggplot2")
 library("ggmap")
 library("tidyverse")
@@ -139,7 +142,10 @@ cp_df = construction_permits[,c('Permit.Class',
 cp_df$Permit.Class.Simple <- ifelse(cp_df$Permit.Class == "", "",
                                     substr(cp_df$Permit.Class, 1, 1))
 
-cp_df$Permit.Class.Simple <- ifelse(cp_df$Permit.Class.Simple == "S", "",
+cp_df$Permit.Class.Simple <- ifelse(cp_df$Permit.Class.Simple == "S", NA,
+                                    cp_df$Permit.Class.Simple)
+
+cp_df$Permit.Class.Simple <- ifelse(cp_df$Permit.Class.Simple == "", NA,
                                     cp_df$Permit.Class.Simple)
 
 unique(cp_df$Permit.Class.Simple)
@@ -186,7 +192,7 @@ dim(cp_df_noNA)
 **In the Traffic Incident data set we started with 356,150 rows and 22 columns.**
 **In the Construction Permits data set we started with 897,369 rows and 68 columns.**
 **In the Traffic Incident data set we ended with 355,333 and 3 columns.**
-**In the Construction Permits data set we ended with 737,785 and 6 columns.**
+**In the Construction Permits data set we ended with 737,781 and 7 columns.**
 
 We selected certain rows based on their relevance to our area of investigation, which reduced the number of columns. We utilized ArcGIS Pro to create a zipcode column for traffic incidents based on the existing latitude and longitude columns for each row.
 
@@ -194,7 +200,197 @@ We also dropped any rows that contained missing values across the columns of int
 
 The resulting data tidy in each data set as each column represents a characteristic, each row represents an individual permit or incident, and each cell represents an individual value.
 
+To match the data sets we need to group by zip codes to relate the two datasets togehter. We do this by using the groupby() method.
+
 # Results
+
+## Research Question 1 - EDA ; Visualization #1 & #2
+Is there a difference in impact of Residential or Commercial construction projects on Traffic Incidents?
+
+```{r}
+# find the number of zip codes
+zip_code_counts <- cp_df_noNA |>
+  count(Original.Zip)
+```
+
+Zip Code Counts - Summary Statistics
+
+```{r}
+
+# display summary statistic for zip codes
+summary(zip_code_counts$n)
+
+# number of distinct zipcodes
+n_distinct(unique(ti_df_noNA$zipcode))
+
+zip_count_r <- cp_df_noNA[cp_df_noNA$Permit.Class.Simple == "R",] |>
+  count(Original.Zip)
+
+zip_count_c <- cp_df_noNA[cp_df_noNA$Permit.Class.Simple == "C",] |>
+  count(Original.Zip)
+
+# plot distribution of residential permits and commercial permits across the zipcode
+ggplot(zip_count_r, aes(x = n)) +
+  geom_histogram(fill = "skyblue", binwidth = 750, center = 375) +
+  labs(title = "Number of Zip Codes with a given level of Construction Permits (residential).",
+       y = "Number of Zipcodes", 
+       x = 'Residential Construction Permits')
+
+ggplot(zip_count_c, aes(x = n)) +
+  geom_histogram(fill = "red", binwidth = 750, center = 375) +
+  xlim(0, 40000) +
+  labs(title = "Number of Zip Codes with a given level of Construction Permits (commercial).",
+       y = "Number of Zipcodes", 
+       x = 'Commercial Construction Permits')
+
+```
+**There are far fewer Zip codes with a high amount of Commercial Construction Permits in comparison to Residential Construction Permits.**
+
+```{r}
+zip_code_counts_TI <- ti_df_noNA |> count(zipcode)
+
+permit_join <- full_join(zip_count_c, zip_count_r, by = c("Original.Zip"))
+
+permit_join <- permit_join |> rename(C_count = n.x, R_count = n.y)
+
+total_join <- full_join(permit_join, zip_code_counts_TI, by = c("Original.Zip" = "zipcode")) |> rename(TI_count = n)
+
+total_join |>
+  drop_na() |>
+  ggplot() +
+  geom_point(aes(x = R_count, y = TI_count), color = "skyblue") +
+  labs(title = "Number of Traffic Incidents vs. Number of Residential Construction Permits", y = "Number of Traffic Incidents", x = 'Number of Residential Construction Permits')
+
+total_join |>
+  drop_na() |>
+  ggplot() +
+  geom_point(aes(x = C_count, y = TI_count), color = "red") +
+  labs(title = "Number of Traffic Incidents vs. Number of Commercial Construction Permits", y = "Number of Traffic Incidents", x = 'Number of Commercial Construction Permits')
+
+```
+**All rows with zip codes that are not in the traffic incident data set is removed. There is one zipcode missing from the commercial permits that is in the residential permits. There is 53 points in the residential scatter plot. There are 52 points in the commercial data set where each point is a zipcode.**
+
+## Research Question 2 - EDA ; Visualization #3 & #4
+How do spatial concentrations of Traffic Incidents change throughout the year?
+
+### Visualization 1
+
+```{r}
+ti_df_formatted <- ti_df_noNA
+```
+
+```{r}
+ti_df_formatted$Published_Date <- as.POSIXct(ti_df_formatted$Published_Date, format = "%m/%d/%Y %H:%M:%OS")
+
+# Converting 'Issued.Date' to Date to ensure correct format
+#ti_df_noNA$Published_Date <- as.Date(ti_df_noNA$Published_Date)
+
+
+# Extracting the year from 'Issued.Date'
+ti_df_formatted$Year <- as.integer(format(ti_df_formatted$Published_Date, "%Y"))
+
+ti_df_formatted <- na.omit(ti_df_formatted) |>
+  filter(Year < 2024)
+
+incidents_summary <- ti_df_formatted |>
+  group_by(`zipcode`) |>
+    summarize(incidents_count = n())
+
+unique(ti_df_formatted$Year)
+
+# showing the number of incidents per year
+years_count <- ti_df_formatted |>
+  count(Year)
+
+years_count
+
+```
+```{r}
+# Show the traffic incidents per year
+ti_df_formatted |>
+  ggplot(aes(x = Year)) +
+  geom_histogram(binwidth = 1, center = 0, color = "darkgreen", fill = "lightgreen") +
+  scale_x_continuous(breaks = seq(2017, 2023, by = 1), labels = seq(2017, 2023, by = 1))
+```
+**There are 26 incidents in the year of 2024, we will remove these outliers since there are not very many.**
+
+```{r}
+# Fetch ZIP code shapefiles for Texas
+zipcodes <- zctas(year = 2010, state = "TX") |>
+  select(ZCTA5CE10, geometry) |>
+  mutate(ZCTA5CE10 = as.numeric(ZCTA5CE10))
+
+ti_df_17_20 <- ti_df_formatted |>
+  filter(Year <= 2020) |>
+  group_by(`zipcode`) |>
+  summarize(incidents_count = n())
+
+ti_df_21_23 <- ti_df_formatted |>
+  filter(Year > 2020) |>
+  group_by(`zipcode`) |>
+  summarize(incidents_count = n())
+```
+
+```{r}
+
+join_17_20 <- ti_df_17_20 |>
+  inner_join(zipcodes, by = c("zipcode" = "ZCTA5CE10"))
+
+ti_df_17_20 |>
+  # Finds the elements that exists in both the shape file and the coyotes_summary data set
+  inner_join(zipcodes, by = c("zipcode" = "ZCTA5CE10")) |>
+  # ggplot sets the charting library
+  ggplot() +
+  # 
+  geom_sf(aes(geometry = geometry, fill = incidents_count), color = "black") +
+  # 
+  geom_sf_text(aes(geometry = geometry, label = zipcode), size = 2, color = "black") +
+  
+  labs(title = "Traffic Incidents between 2017 and 2020", x = "Longitude", y = "Latitude")
+
+ti_df_21_23 |>
+  # Finds the elements that exists in both the shape file and the coyotes_summary data set
+  inner_join(zipcodes, by = c("zipcode" = "ZCTA5CE10")) |>
+  # ggplot sets the charting library
+  ggplot() +
+  # 
+  geom_sf(aes(geometry = geometry, fill = incidents_count), color = "black") +
+  # 
+  geom_sf_text(aes(geometry = geometry, label = zipcode), size = 2, color = "black") +
+  
+  labs(title = "Traffic Incidents between 2021 and 2023", x = "Longitude", y = "Latitude")
+```
+**These visualizations agree with our hypothesis that traffic incidents would be more focused in the city center. There are more zipcodes in the dataset with the years of 2017 through 2020**
+
+### Visualization 2
+How do trends in traffic incidents changes throughout the year (difference by month)
+
+```{r}
+# Extracting the month from 'Issued.Date'
+ti_df_formatted$Month <- as.integer(format(ti_df_formatted$Published_Date, "%m"))
+
+unique(ti_df_formatted$Month)
+
+ti_df_formatted |>
+  ggplot(aes(x = Month)) +
+  geom_histogram(binwidth = 1, center = 0, color = "darkgreen", fill = "lightgreen") +
+  scale_x_continuous(breaks = seq(1, 12, by = 1), labels = seq(1, 12, by = 1)) 
+```
+```{r}
+ti_df_formatted |>
+  filter(Year <= 2020) |>
+  ggplot(aes(x = Month)) +
+  geom_histogram(binwidth = 1, center = 0, color = "darkgreen", fill = "lightgreen") +
+  scale_x_continuous(breaks = seq(1, 12, by = 1), labels = seq(1, 12, by = 1)) +
+  labs(title = "Traffic Incident Counts from 2017 to 2020")
+
+ti_df_formatted |>
+  filter(Year > 2020) |>
+  ggplot(aes(x = Month)) +
+  geom_histogram(binwidth = 1, center = 0, color = "darkgreen", fill = "lightgreen") +
+  scale_x_continuous(breaks = seq(1, 12, by = 1), labels = seq(1, 12, by = 1)) +
+  labs(title = "Traffic Incident Counts from 2021 to 2024")
+```
 
 # Discussion
 
