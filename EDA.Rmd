@@ -54,7 +54,7 @@ Unique Rows - A single row represents a traffic incident.
 
 **Trends and Relationships**
 
-We expect that Commercial Projects cause an increase in Traffic Incident rates. We expect that there will be more traffic incidents during the months of mid spring when there is more rain. We also expect that there will be a difference in Traffic Incidents rates based upon the proximity of zip codes to the Austin city center. 
+We expect that Commercial Projects cause an increase in Traffic Incident rates. We expect that there will be more traffic incidents during the months of mid spring when there is more rain. We also expect that there will be a difference in Traffic Incidents rates based upon the proximity of zip codes to the Austin city center.
 
 **Research Question - Dan**
 
@@ -73,7 +73,9 @@ How do spatial concentrations of Traffic Incidents change throughout the year?
 #install.packages("ggplot2")
 #install.packages("sf")
 #install.packages("tigris")
-library(dplyr)
+library("sf")
+library("tigris")
+library("dplyr")
 library("ggplot2")
 library("ggmap")
 library("tidyverse")
@@ -96,6 +98,7 @@ as.data.frame(colnames(construction_permits))
 ```{r}
 dim(construction_permits)
 ```
+
 **Note - ArcGIS Reverse Geocoding Process**
 
 In the Traffic Incidents data set there was not a column for Zip codes. Because there was available data for latitude and longitude, we decided to reverse-geocode the lat/lon values in a column of zip codes. We initially were attempting to utilize Maps API services to perform this task but it was cost prohibitive. We opted to use a Geographic Information System software named ArcGIS to produce the Zipcode data leveraging a TIGER/Line Shapefile provided by the US Census Bureau to reverse geocode the lat/lon figures through ArcGIS's geoferencing capabilities.
@@ -111,6 +114,7 @@ as.data.frame(colnames(traffic_indcidents))
 ```{r}
 dim(traffic_indcidents)
 ```
+
 ## Cleaning Data
 
 ### Removing unneeded columns
@@ -189,10 +193,8 @@ dim(ti_df_noNA)
 # Rows and Columns of the cleaned Construction Permit data set
 dim(cp_df_noNA)
 ```
-**In the Traffic Incident data set we started with 356,150 rows and 22 columns.**
-**In the Construction Permits data set we started with 897,369 rows and 68 columns.**
-**In the Traffic Incident data set we ended with 355,333 and 3 columns.**
-**In the Construction Permits data set we ended with 737,781 and 7 columns.**
+
+**In the Traffic Incident data set we started with 356,150 rows and 22 columns.** **In the Construction Permits data set we started with 897,369 rows and 68 columns.** **In the Traffic Incident data set we ended with 355,333 and 3 columns.** **In the Construction Permits data set we ended with 737,781 and 7 columns.**
 
 We selected certain rows based on their relevance to our area of investigation, which reduced the number of columns. We utilized ArcGIS Pro to create a zipcode column for traffic incidents based on the existing latitude and longitude columns for each row.
 
@@ -205,6 +207,7 @@ To match the data sets we need to group by zip codes to relate the two datasets 
 # Results
 
 ## Research Question 1 - EDA ; Visualization #1 & #2
+
 Is there a difference in impact of Residential or Commercial construction projects on Traffic Incidents?
 
 ```{r}
@@ -217,12 +220,6 @@ Zip Code Counts - Summary Statistics
 
 ```{r}
 
-# display summary statistic for zip codes
-summary(zip_code_counts$n)
-
-# number of distinct zipcodes
-n_distinct(unique(ti_df_noNA$zipcode))
-
 zip_count_r <- cp_df_noNA[cp_df_noNA$Permit.Class.Simple == "R",] |>
   count(Original.Zip)
 
@@ -232,22 +229,30 @@ zip_count_c <- cp_df_noNA[cp_df_noNA$Permit.Class.Simple == "C",] |>
 # plot distribution of residential permits and commercial permits across the zipcode
 ggplot(zip_count_r, aes(x = n)) +
   geom_histogram(fill = "skyblue", binwidth = 750, center = 375) +
-  labs(title = "Number of Zip Codes with a given level of Construction Permits (residential).",
+  labs(title = "Viz. 1: Number of Zip Codes with a given level of Construction Permits (residential).",
        y = "Number of Zipcodes", 
        x = 'Residential Construction Permits')
 
+summary(zip_count_r)
+```
+**There are more zipcodes with fewer residential construction permits. The data is also positively skewed. The mean number of permits per zipcode is 9,876 whilst the median is 7,043.**
+
+```{r}
 ggplot(zip_count_c, aes(x = n)) +
   geom_histogram(fill = "red", binwidth = 750, center = 375) +
   xlim(0, 40000) +
-  labs(title = "Number of Zip Codes with a given level of Construction Permits (commercial).",
+  labs(title = "Viz. 2: Number of Zip Codes with a given level of Construction Permits (commercial).",
        y = "Number of Zipcodes", 
        x = 'Commercial Construction Permits')
 
+summary(zip_count_c)
 ```
-**There are far fewer Zip codes with a high amount of Commercial Construction Permits in comparison to Residential Construction Permits.**
+**There are more zipcodes with fewer commercial construction permits. The data is also positively skewed. The mean number of permits per zipcode is 4,122 whilst the median is 2,576.**
 
 ```{r}
 zip_code_counts_TI <- ti_df_noNA |> count(zipcode)
+
+summary(zip_code_counts_TI)
 
 permit_join <- full_join(zip_count_c, zip_count_r, by = c("Original.Zip"))
 
@@ -259,18 +264,22 @@ total_join |>
   drop_na() |>
   ggplot() +
   geom_point(aes(x = R_count, y = TI_count), color = "skyblue") +
-  labs(title = "Number of Traffic Incidents vs. Number of Residential Construction Permits", y = "Number of Traffic Incidents", x = 'Number of Residential Construction Permits')
+  labs(title = "Viz. 3: Number of Traffic Incidents vs. Number of Residential Construction Permits", y = "Number of Traffic Incidents", x = 'Number of Residential Construction Permits')
 
 total_join |>
   drop_na() |>
   ggplot() +
   geom_point(aes(x = C_count, y = TI_count), color = "red") +
-  labs(title = "Number of Traffic Incidents vs. Number of Commercial Construction Permits", y = "Number of Traffic Incidents", x = 'Number of Commercial Construction Permits')
+  labs(title = "Viz. 4: Number of Traffic Incidents vs. Number of Commercial Construction Permits", y = "Number of Traffic Incidents", x = 'Number of Commercial Construction Permits')
+
+summary(total_join)
 
 ```
-**All rows with zip codes that are not in the traffic incident data set is removed. There is one zipcode missing from the commercial permits that is in the residential permits. There is 53 points in the residential scatter plot. There are 52 points in the commercial data set where each point is a zipcode.**
+
+**All rows with zip codes that are not in the traffic incident data set is removed. There is one zipcode missing from the commercial permits that is in the residential permits. There is 53 points in the residential scatter plot. There are 52 points in the commercial data set where each point is a zipcode. There appears to be a positive correlation between traffic incidents and both residential and commercial construction permit numbers. However, the correlation with residential construction permits is much stronger. We already discussed the commercial and resident permit statistics, but here, let us bring your attention to the traffic incidents. The mean number of traffic incidents per zipcode is 4,281 with a median of 1,917, again indicating positive skew.**
 
 ## Research Question 2 - EDA ; Visualization #3 & #4
+
 How do spatial concentrations of Traffic Incidents change throughout the year?
 
 ### Visualization 1
@@ -296,22 +305,25 @@ incidents_summary <- ti_df_formatted |>
   group_by(`zipcode`) |>
     summarize(incidents_count = n())
 
-unique(ti_df_formatted$Year)
-
 # showing the number of incidents per year
 years_count <- ti_df_formatted |>
   count(Year)
 
 years_count
 
+summary(ti_df_formatted)
+
 ```
+
 ```{r}
 # Show the traffic incidents per year
 ti_df_formatted |>
   ggplot(aes(x = Year)) +
   geom_histogram(binwidth = 1, center = 0, color = "darkgreen", fill = "lightgreen") +
-  scale_x_continuous(breaks = seq(2017, 2023, by = 1), labels = seq(2017, 2023, by = 1))
+  scale_x_continuous(breaks = seq(2017, 2023, by = 1), labels = seq(2017, 2023, by = 1)) +
+  labs(title = "Viz. 5: Traffic Incidents per Year")
 ```
+
 **There are 26 incidents in the year of 2024, we will remove these outliers since there are not very many.**
 
 ```{r}
@@ -325,10 +337,14 @@ ti_df_17_20 <- ti_df_formatted |>
   group_by(`zipcode`) |>
   summarize(incidents_count = n())
 
+summary(ti_df_17_20)
+
 ti_df_21_23 <- ti_df_formatted |>
   filter(Year > 2020) |>
   group_by(`zipcode`) |>
   summarize(incidents_count = n())
+
+summary(ti_df_21_23)
 ```
 
 ```{r}
@@ -346,7 +362,7 @@ ti_df_17_20 |>
   # 
   geom_sf_text(aes(geometry = geometry, label = zipcode), size = 2, color = "black") +
   
-  labs(title = "Traffic Incidents between 2017 and 2020", x = "Longitude", y = "Latitude")
+  labs(title = "Viz. 6: Traffic Incidents between 2017 and 2020", x = "Longitude", y = "Latitude")
 
 ti_df_21_23 |>
   # Finds the elements that exists in both the shape file and the coyotes_summary data set
@@ -358,40 +374,78 @@ ti_df_21_23 |>
   # 
   geom_sf_text(aes(geometry = geometry, label = zipcode), size = 2, color = "black") +
   
-  labs(title = "Traffic Incidents between 2021 and 2023", x = "Longitude", y = "Latitude")
+  labs(title = "Viz. 7: Traffic Incidents between 2021 and 2023", x = "Longitude", y = "Latitude")
 ```
-**These visualizations agree with our hypothesis that traffic incidents would be more focused in the city center. There are more zipcodes in the dataset with the years of 2017 through 2020**
+
+**These visualizations agree with our hypothesis that traffic incidents would be more focused in the city center. There are more zipcodes in the dataset with the years of 2017 through 2020. Between the years of 2017 and 2020 the median and mean number of traffic incidents is 1,245 and 2,501, respectively. Between the years of 2021 and 2024 the median and mean number of traffic incidents is 1,123 and 1,963.7, respectively.**
 
 ### Visualization 2
+
 How do trends in traffic incidents changes throughout the year (difference by month)
 
 ```{r}
 # Extracting the month from 'Issued.Date'
 ti_df_formatted$Month <- as.integer(format(ti_df_formatted$Published_Date, "%m"))
 
-unique(ti_df_formatted$Month)
-
 ti_df_formatted |>
   ggplot(aes(x = Month)) +
   geom_histogram(binwidth = 1, center = 0, color = "darkgreen", fill = "lightgreen") +
-  scale_x_continuous(breaks = seq(1, 12, by = 1), labels = seq(1, 12, by = 1)) 
+  scale_x_continuous(breaks = seq(1, 12, by = 1), labels = seq(1, 12, by = 1)) +
+  labs(title = "Viz. 8: Traffic Incident Counts Across Each Month")
+
+# displays the summary statistics for the 
+# number of traffic incidents during each month
+ti_df_formatted |>
+  count(Month) |>
+  summary()
 ```
+**For the number of traffic incidents across the months, there is a spike in accidents during October that decreases during January. This indicates an increase in traffic incidents in the winter months. The median number of traffic incidents across the months is 28,895 while the mean is 29,604. There is a Min of 27,278 and a Max of 35,308.**
+
 ```{r}
 ti_df_formatted |>
   filter(Year <= 2020) |>
   ggplot(aes(x = Month)) +
-  geom_histogram(binwidth = 1, center = 0, color = "darkgreen", fill = "lightgreen") +
+  geom_histogram(binwidth = 1, center = 0, color = "blue", fill = "skyblue") +
   scale_x_continuous(breaks = seq(1, 12, by = 1), labels = seq(1, 12, by = 1)) +
-  labs(title = "Traffic Incident Counts from 2017 to 2020")
+  labs(title = "Viz. 9: Traffic Incident Counts From 2017 To 2020")
 
+ti_df_formatted |>
+  filter(Year <= 2020) |>
+  count(Month) |>
+  summary()
+```
+**When we separate the the month against traffic incident count into two different segments based on year, we find that between the years of 2017 and 2020 the trend is similar to the total trend. There is a slightly more pronounced increase in traffic incidents in the winter months. The median and mean number of traffic incidents are 15,628 and 16,676, respectively with a Min of 14,650 and a Max 21,184.**
+
+```{r}
 ti_df_formatted |>
   filter(Year > 2020) |>
   ggplot(aes(x = Month)) +
-  geom_histogram(binwidth = 1, center = 0, color = "darkgreen", fill = "lightgreen") +
+  geom_histogram(binwidth = 1, center = 0, color = "red", fill = "orange") +
   scale_x_continuous(breaks = seq(1, 12, by = 1), labels = seq(1, 12, by = 1)) +
-  labs(title = "Traffic Incident Counts from 2021 to 2024")
+  labs(title = "Viz. 10: Traffic Incident Counts From 2021 To 2024")
+
+ti_df_formatted |>
+  filter(Year > 2020) |>
+  count(Month) |>
+  summary()
 ```
+**Between the years of 2021 and 2023 the median and mean number of traffic incidents are 12,793 and 12,928, respectively with a Min of 11,361 and a Max 14,150. This shows that the "winter effect" is not as present in years closer to the most recent years in the data set.**
 
 # Discussion
 
+There is indeed a difference in impact between Residential construction project and Commercial construction projects on Traffic Incidents. Specifically looking at the scatterplots (Vis. 3 and 4), we see that there is a stronger positive correlation between the number of Commercial construction permits and the number of Traffic Incidents than between the number of Residential construction projects and the number of Traffic Incidents, though as we expected, both seem to show positive correlations.
+
+The visualization match our expectations as shown in Visualization 6 & 7 as the number traffic incidents increase per zipcode as they are closer in proximity to the city center. It is important to note that the zipcodes that are closer to the city center are smaller in area and higher in density. Visualizations 9 & 10 show that in earlier years (Vis. 9) the number of traffic incidents increased in the winter months while in recent years (Vis. 10) the traffic incident counts across the month are more uniform. We would like to note that shape file that we used was for the year of 2010 while the data is for the years of 2017 through 2023. If these ZIP codes were changed in their spatial construction, the results of this study may differ, though we do expect these differences to be minor.
+
+The biggest takeaways from this EDA Study would be that 1) In past years, there was an increase in traffic incidents during the winter months compared to more recent years, 2) The density of traffic incidents increases in the ZIP codes closer in proximity to the city center, 3) There are generally more zipcodes with fewer permits when looking at either residential or commercial construction permits, and 4) There is a stronger positive correlation between the number of commercial construction permits and the number of traffic incidents than there is between the number of residential construction permits and the number of traffic incidents.
+
 # Reflection, acknowledgements, and references
+
+One of the biggest challenges was understanding how to get the data into the correct dataframes and format to answer our research questiosn. To accomplish this task we had to understand certain syntax rules in R, particularly considering grouping, counting, and using shapefiles to map geospatial data. We learned how to better clean and visualize our data in order to answer our research questions to a satisfactory degree. Furthermore, we came to realize how important it is to clean the data before beginning our analysis and how to put certain values in useable formats, e.g., dates.
+
+The datasets are linked above, where one can find information about the data owners. We would like to extend our gratitude to our professor, Dr. Layla Guyot, and our UGCA, Vamsi Abena, for their help and guidance with our EDA. Also, thank you to the City of Austin for making this data publicly accessible so that we can carry out this project. We, Tigris and Dan, contributed to equal parts of the project with special individual contributions to our particularly research questions.
+
+# Links and References
+[Construction Permit Dataset](https://data.austintexas.gov/Building-and-Development/Issued-Construction-Permits/3syk-w9eu/about_data)
+[Traffic Incident Dataset](https://data.austintexas.gov/Transportation-and-Mobility/Real-Time-Traffic-Incident-Reports/dx9v-zd7x/about_data)
+[Crash Rates During Non-Construction and Construction Periods (Mangones et al., 2021)](https://www.sciencedirect.com/science/article/pii/S235214652100819X)
