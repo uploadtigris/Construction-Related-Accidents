@@ -125,6 +125,9 @@ ti_df = traffic_indcidents[,c('Published_Date',
                               'Issue_Reported',
                               'ZCTA5CE20')]
 
+ti_df |>
+  count(Issue_Reported)
+
 # renaming the zipcode column
 ti_df <- ti_df |>
   rename(zipcode = ZCTA5CE20)
@@ -138,6 +141,8 @@ cp_df = construction_permits[,c('Permit.Class',
                                 'Status.Current',
                                 'Number.Of.Floors',
                                 'Original.Zip')]
+
+unique(cp_df$Permit.Type.Desc)
 ```
 
 ```{r}
@@ -152,8 +157,29 @@ cp_df$Permit.Class.Simple <- ifelse(cp_df$Permit.Class.Simple == "S", NA,
 cp_df$Permit.Class.Simple <- ifelse(cp_df$Permit.Class.Simple == "", NA,
                                     cp_df$Permit.Class.Simple)
 
-unique(cp_df$Permit.Class.Simple)
+unique(cp_df$Permit.Type.Desc)
+head(cp_df)
+unique(cp_df$Status.Current)
+dim(cp_df)
+```
 
+### Filtering Status.Current for only Final, Active,
+
+```{r}
+# Find the number of each Status among the cp_df dataset
+cp_df |>
+  count(Status.Current)
+```
+
+**After counting the number of Status occurrences, we see that 'Final', 'Active' and 'Expired' are the most common status among the permits. We omit 'Expired' and the rest of the categories as they do not have a large impact on the number of traffic incidents. (Note: Some permits may have status that implies that a new permit was created. Because of the involved ambiguity, and the fact that these number of these permits is low, we do not include them in the data set from here on.)**
+
+```{r}
+# Filtering only for permits with Status of 'Active' or 'Final'
+cp_df <- cp_df |>
+  filter(Status.Current %in% c('Final', 'Active'))
+
+cp_df |>
+  count(Status.Current)
 ```
 
 ### NA Values
@@ -180,6 +206,10 @@ ti_df_noNA <- na.omit(ti_df)
 ```{r}
 # assign rows with description type of "Driveway / Sidewalks" to 0
 cp_df$Number.Of.Floors <- ifelse(is.na(cp_df$Number.Of.Floors) & cp_df$Permit.Type.Desc == "Driveway / Sidewalks", 0, cp_df$Number.Of.Floors)
+
+# Drop Number.of.floors above 80 (The tallest building in Austin is 75-floors)
+cp_df <- cp_df |>
+  filter(Number.Of.Floors <= 75)
 
 # dropping NA values from the Construction Permits data set & saving the data frame
 cp_df_noNA <- na.omit(cp_df)
@@ -235,6 +265,7 @@ ggplot(zip_count_r, aes(x = n)) +
 
 summary(zip_count_r)
 ```
+
 **There are more zipcodes with fewer residential construction permits. The data is also positively skewed. The mean number of permits per zipcode is 9,876 whilst the median is 7,043.**
 
 ```{r}
@@ -247,6 +278,7 @@ ggplot(zip_count_c, aes(x = n)) +
 
 summary(zip_count_c)
 ```
+
 **There are more zipcodes with fewer commercial construction permits. The data is also positively skewed. The mean number of permits per zipcode is 4,122 whilst the median is 2,576.**
 
 ```{r}
@@ -273,7 +305,6 @@ total_join |>
   labs(title = "Viz. 4: Number of Traffic Incidents vs. Number of Commercial Construction Permits", y = "Number of Traffic Incidents", x = 'Number of Commercial Construction Permits')
 
 summary(total_join)
-
 ```
 
 **All rows with zip codes that are not in the traffic incident data set is removed. There is one zipcode missing from the commercial permits that is in the residential permits. There is 53 points in the residential scatter plot. There are 52 points in the commercial data set where each point is a zipcode. There appears to be a positive correlation between traffic incidents and both residential and commercial construction permit numbers. However, the correlation with residential construction permits is much stronger. We already discussed the commercial and resident permit statistics, but here, let us bring your attention to the traffic incidents. The mean number of traffic incidents per zipcode is 4,281 with a median of 1,917, again indicating positive skew.**
@@ -360,7 +391,7 @@ ti_df_17_20 |>
   # 
   geom_sf(aes(geometry = geometry, fill = incidents_count), color = "black") +
   # 
-  geom_sf_text(aes(geometry = geometry, label = zipcode), size = 2, color = "black") +
+  geom_sf_text(aes(geometry = geometry, label = zipcode), size = 1.5, color = "black") +
   
   labs(title = "Viz. 6: Traffic Incidents between 2017 and 2020", x = "Longitude", y = "Latitude")
 
@@ -372,7 +403,7 @@ ti_df_21_23 |>
   # 
   geom_sf(aes(geometry = geometry, fill = incidents_count), color = "black") +
   # 
-  geom_sf_text(aes(geometry = geometry, label = zipcode), size = 2, color = "black") +
+  geom_sf_text(aes(geometry = geometry, label = zipcode), size = 1.5, color = "black") +
   
   labs(title = "Viz. 7: Traffic Incidents between 2021 and 2023", x = "Longitude", y = "Latitude")
 ```
@@ -399,6 +430,7 @@ ti_df_formatted |>
   count(Month) |>
   summary()
 ```
+
 **For the number of traffic incidents across the months, there is a spike in accidents during October that decreases during January. This indicates an increase in traffic incidents in the winter months. The median number of traffic incidents across the months is 28,895 while the mean is 29,604. There is a Min of 27,278 and a Max of 35,308.**
 
 ```{r}
@@ -414,6 +446,7 @@ ti_df_formatted |>
   count(Month) |>
   summary()
 ```
+
 **When we separate the the month against traffic incident count into two different segments based on year, we find that between the years of 2017 and 2020 the trend is similar to the total trend. There is a slightly more pronounced increase in traffic incidents in the winter months. The median and mean number of traffic incidents are 15,628 and 16,676, respectively with a Min of 14,650 and a Max 21,184.**
 
 ```{r}
@@ -429,7 +462,102 @@ ti_df_formatted |>
   count(Month) |>
   summary()
 ```
+
 **Between the years of 2021 and 2023 the median and mean number of traffic incidents are 12,793 and 12,928, respectively with a Min of 11,361 and a Max 14,150. This shows that the "winter effect" is not as present in years closer to the most recent years in the data set.**
+
+# SDS 322E Project: Part 2
+
+## Classification and Prediction
+
+## Description - Classification and Prediction Report
+
+**We want to predict the number of Traffic Incidents. Our predictive variables will be:**
+**- Permit.Class.Simple**
+**- Permit.Type.Desc**
+**- Status.Current**
+**- Number.Of.Floors**
+
+**Our outcome variable is TI_count, the number of traffic incidents in a Zip code**
+
+**We will use both Linear Regression and KNN to predict Traffic Incident Counts as it is a continuous numeric variable.**
+
+```{r}
+# Creating a new data frame for predictive analysis
+TI_Counts <- ti_df_formatted |>
+  group_by(`zipcode`) |>
+  summarize(incidents_count = n())
+
+# Assuming cp_df_noNA is your main dataframe
+encoded_counts <- cp_df_noNA |>
+  mutate(
+    is_R = as.integer(Permit.Class.Simple == "R"),
+    is_C = as.integer(Permit.Class.Simple == "C"),
+    is_Building = as.integer(Permit.Type.Desc == "Building Permit"),
+    is_Sidewalks = as.integer(Permit.Type.Desc == "Driveway / Sidewalks"),
+    is_Electric = as.integer(Permit.Type.Desc == "Electrical Permit"),
+    is_Mechanical = as.integer(Permit.Type.Desc == "Mechanical Permit"),
+    is_Plumbing = as.integer(Permit.Type.Desc == "Plumbing Permit"),
+    is_Active = as.integer(Status.Current == "Active"),
+    is_Final = as.integer(Status.Current == "Final")
+  ) |>
+  group_by(Original.Zip) |>
+  summarize(
+    R_count = sum(is_R),
+    C_count = sum(is_C),
+    Building_count = sum(is_Building),
+    Sidewalks_count = sum(is_Sidewalks),
+    Electric_count = sum(is_Electric),
+    Mechanical_count = sum(is_Mechanical),
+    Plumbing_count = sum(is_Plumbing),
+    Active_count = sum(is_Active),
+    Final_count = sum(is_Final),
+    Mean_Number_Of_Floors = round(mean(Number.Of.Floors, na.rm = TRUE), digits = 2)
+  )
+
+# Join with TI_Counts
+final_join <- full_join(encoded_counts, TI_Counts, by = c("Original.Zip" = "zipcode"))
+
+#------------------------
+
+head(final_join)
+
+```
+
+# Model 1 - Linear Regression
+
+To asses the performance of the models, We will perform cross-validation. Specifically, we will perform a 10-fold cross-validation.
+
+```{r}
+# sets the random sample set to maintain the same random sample for testing
+set.seed(322)
+
+# the number of folds in the cross-validation
+k = 10 
+
+# randomly ordering the ROWS in the dataset
+data <- final_join[sample(nrow(final_join)), ] 
+
+# Creating 'k' folds from the dataset
+folds <- cut(seq(1:nrow(data)), breaks = k, labels = FALSE)
+```
+
+```{r}
+# Implement a Linear Regression Model
+fit_lin <- lm(incidents_count ~ R_count + C_count + Mean_Number_Of_Floors, data = final_join)
+```
+
+```{r}
+RMSE = sqrt(mean(resid(fit_lin)^2))
+RMSE
+```
+Worksheet 15 - Predicted vs. Actual Values, graph them
+
+
+# Cross-validation - Linear Regression
+
+# Model 2 - K-nearest neighborhood (KNN)
+
+# Cross-validation - K-nearest neighborhood (KNN)
 
 # Discussion
 
@@ -446,6 +574,5 @@ One of the biggest challenges was understanding how to get the data into the cor
 The datasets are linked above, where one can find information about the data owners. We would like to extend our gratitude to our professor, Dr. Layla Guyot, and our UGCA, Vamsi Abena, for their help and guidance with our EDA. Also, thank you to the City of Austin for making this data publicly accessible so that we can carry out this project. We, Tigris and Dan, contributed to equal parts of the project with special individual contributions to our particularly research questions.
 
 # Links and References
-[Construction Permit Dataset](https://data.austintexas.gov/Building-and-Development/Issued-Construction-Permits/3syk-w9eu/about_data)
-[Traffic Incident Dataset](https://data.austintexas.gov/Transportation-and-Mobility/Real-Time-Traffic-Incident-Reports/dx9v-zd7x/about_data)
-[Crash Rates During Non-Construction and Construction Periods (Mangones et al., 2021)](https://www.sciencedirect.com/science/article/pii/S235214652100819X)
+
+[Construction Permit Dataset](https://data.austintexas.gov/Building-and-Development/Issued-Construction-Permits/3syk-w9eu/about_data) [Traffic Incident Dataset](https://data.austintexas.gov/Transportation-and-Mobility/Real-Time-Traffic-Incident-Reports/dx9v-zd7x/about_data) [Crash Rates During Non-Construction and Construction Periods (Mangones et al., 2021)](https://www.sciencedirect.com/science/article/pii/S235214652100819X)
