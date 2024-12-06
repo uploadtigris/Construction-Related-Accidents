@@ -555,9 +555,65 @@ Worksheet 15 - Predicted vs. Actual Values, graph them
 
 # Cross-validation - Linear Regression
 
-# Model 2 - K-nearest neighborhood (KNN)
+# Model 2 - K-nearest neighbors (KNN)
+```{r}
+# install.packages("caret")
+# library(caret)
 
-# Cross-validation - K-nearest neighborhood (KNN)
+fit_knnreg <- knnreg(incidents_count ~ R_count + C_count + Mean_Number_Of_Floors,
+                     data = final_join,
+                     k = 5) # Number of Neighbors
+
+final_join |>
+  mutate(predictions = predict(fit_knnreg, final_join)) |>
+  select(incidents_count, R_count, C_count, Mean_Number_Of_Floors)
+
+sqrt(mean((final_join$incidents_count - predict(fit_knnreg, final_join))^2))
+```
+
+# Cross-validation - K-nearest neighbors (KNN)
+```{r}
+# Choose number of folds
+k = 5 
+
+# To have the same random sample, use set.seed
+set.seed(322)
+
+# Randomly order rows in the dataset
+data <- final_join[sample(nrow(final_join)), ] 
+
+# Create k folds from the dataset
+folds <- cut(seq(1:nrow(data)), breaks = k, labels = FALSE)
+
+
+
+# Initialize a vector to keep track of the performance for each k-fold
+perf_k <- NULL
+
+# Use a for-loop to get performance for each k-fold
+for(i in 1:k){
+  # Split data into train and test data
+  train_not_i <- data[folds != i, ] # train data = all observations except in fold i
+  test_i <- data[folds == i, ]  # test data = observations in fold i
+  
+  # Train model on train data (all but fold i)
+  # CHANGE: what model/predictors should be included
+  train_model <- knnreg(incidents_count ~ R_count + C_count + Mean_Number_Of_Floors,
+                     data = train_not_i,
+                     k = 5)
+  
+  # Performance listed for each test data = fold i
+  # CHANGE: how the performance is calculated
+  perf_k[i] <- sqrt(mean((test_i$incidents_count - predict(train_model, test_i))^2))
+}
+
+# Performance for each fold 
+perf_k
+
+# Average performance over all k folds
+mean(perf_k)
+sd(perf_k)
+```
 
 # Discussion
 
