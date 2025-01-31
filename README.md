@@ -14,4 +14,6 @@ Collaborators: Tigris Mendez, Dan Tatulescu
 
 Using ArcGIS Pro, we translated the the latitude/longitude data into zipcode data with reverse geocoding using the ![Tiger 2024 Shape Files](https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html) as a proxy.
 
+# Todo
 
+- Print projects into a HTML viewable document
